@@ -1,12 +1,17 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler, filters,
-    ContextTypes, ConversationHandler
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    ConversationHandler,
+    filters,
 )
+import os
 
 # === НАСТРОЙКИ ===
-ADMIN_ID = 528078698  # <-- Вставь сюда свой Telegram ID от @userinfobot
-BOT_TOKEN = "7981548528:AAEtJZo2yja4V_ozUhktZsvdbZZVQQoz3d4"  # <-- Токен от BotFather
+ADMIN_ID = 528078698  # ← Замени на свой ID
+BOT_TOKEN = "7981548528:AAEtJZo2yja4V_ozUhktZsvdbZZVQQoz3d4"  # ← Замени на свой токен
 
 # === КНОПКИ ===
 main_menu = ReplyKeyboardMarkup(
@@ -95,23 +100,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Выберите категорию:", reply_markup=real_estate_menu)
 
     elif text == "📞 Контакты":
-        await update.message.reply_text(
-            "Связаться с нами можно по телефону: 📞 +7 927 220-13-31\n""или по почте: ✉️ Andreeva_YGe@incom.ru"
-        )
+        await update.message.reply_text("📞 +7 927 220-13-31\n✉️ Andreeva_YGe@incom.ru")
 
     elif text == "🏢 Квартиры":
         await update.message.reply_text("Выберите тип квартиры:", reply_markup=apartments_menu)
 
     elif text == "🏗 Новостройки":
-        await update.message.reply_text("Укажите район и желаемый бюджет:", reply_markup=None)
+        await update.message.reply_text("Укажите район и желаемый бюджет:")
         return ASK_NEW
 
     elif text == "🏘 Вторичные":
-        await update.message.reply_text("Укажите район и желаемый бюджет:", reply_markup=None)
+        await update.message.reply_text("Укажите район и желаемый бюджет:")
         return ASK_SECONDARY
 
     elif text == "🏡 Дома":
-        await update.message.reply_text("Укажите район и желаемый бюджет:", reply_markup=None)
+        await update.message.reply_text("Укажите район и желаемый бюджет:")
         return ASK_HOUSE
 
     elif text == "🔙 Назад":
@@ -120,27 +123,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Пожалуйста, выберите пункт из меню.")
 
-# === ЗАПУСК ===
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
+    conv_handler = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex("💼 Трудоустройство"), ask_job_form),
+            MessageHandler(filters.Regex("🏗 Новостройки"), handle_message),
+            MessageHandler(filters.Regex("🏘 Вторичные"), handle_message),
+            MessageHandler(filters.Regex("🏡 Дома"), handle_message),
+        ],
+        states={
+            ASK_FORM: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_form)],
+            ASK_NEW: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_new)],
+            ASK_SECONDARY: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_secondary)],
+            ASK_HOUSE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_house)],
+        },
+        fallbacks=[],
+        allow_reentry=True
+    )
 
-app.add_handler(ConversationHandler(
-    entry_points=[
-        MessageHandler(filters.Regex("💼 Трудоустройство"), ask_job_form),
-        MessageHandler(filters.Regex("🏗 Новостройки"), handle_message),
-        MessageHandler(filters.Regex("🏘 Вторичные"), handle_message),
-        MessageHandler(filters.Regex("🏡 Дома"), handle_message),
-    ],
-    states={
-        ASK_FORM: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_form)],
-        ASK_NEW: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_new)],
-        ASK_SECONDARY: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_secondary)],
-        ASK_HOUSE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_house)],
-    },
-    fallbacks=[]
-))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(conv_handler)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
 
-app.run_polling()
+if __name__ == "__main__":
+    main()
